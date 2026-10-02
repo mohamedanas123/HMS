@@ -130,7 +130,6 @@ public class AppointmentService {
         appointment.setStatus(AppointmentStatus.CANCELLED);
         Appointment saved = appointmentRepository.save(appointment);
 
-        // Notify the other party
         UserDetailsImpl currentUser = getCurrentUser();
         boolean cancelledByPatient = currentUser.getId().equals(appointment.getPatient().getId());
         if (cancelledByPatient) {
@@ -171,6 +170,15 @@ public class AppointmentService {
         if (appointment.getStatus() != AppointmentStatus.APPROVED) {
             throw new BadRequestException("Only approved appointments can be marked as completed");
         }
+
+        LocalDate today = LocalDate.now();
+        if (appointment.getAppointmentDate().isAfter(today)) {
+            throw new BadRequestException("Cannot complete future appointments. Doctors can only complete today's appointments.");
+        }
+        if (!appointment.getAppointmentDate().isEqual(today)) {
+            throw new BadRequestException("Doctors can only complete appointments scheduled for today.");
+        }
+
         appointment.setStatus(AppointmentStatus.COMPLETED);
         if (prescription != null && prescription.getPrescriptionNotes() != null) {
             appointment.setPrescriptionNotes(prescription.getPrescriptionNotes());
@@ -197,8 +205,8 @@ public class AppointmentService {
         if (durationMinutes > 60) {
             throw new BadRequestException("Appointment duration cannot exceed 1 hour (60 minutes)");
         }
-        if (date.isBefore(LocalDate.now())) {
-            throw new BadRequestException("Cannot book an appointment in the past");
+        if (!date.isAfter(LocalDate.now())) {
+            throw new BadRequestException("Same-day or past appointments are not allowed. Please select a date from tomorrow onwards.");
         }
         if (start.isBefore(doctor.getStartTime()) || end.isAfter(doctor.getEndTime())) {
             throw new BadRequestException(
@@ -206,7 +214,6 @@ public class AppointmentService {
                 doctor.getStartTime() + " – " + doctor.getEndTime() + ")"
             );
         }
-        // Break overlap
         if (doctor.getBreakTime() != null && doctor.getBreakEndTime() != null) {
             boolean overlapBreak = start.isBefore(doctor.getBreakEndTime()) && end.isAfter(doctor.getBreakTime());
             if (overlapBreak) {

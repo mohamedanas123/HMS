@@ -5,12 +5,8 @@ import { getDepartments } from '../../api/departmentApi';
 import { changePassword } from '../../api/userApi';
 import { formatTime } from '../../utils/formatTime';
 import { useAuth } from '../../context/AuthContext';
-import { isValidPassword, PASSWORD_REQUIREMENT_MSG } from '../../utils/validation';
+import { isValidPassword, PASSWORD_REQUIREMENT_MSG, isValidPhoneNumber, PHONE_REQUIREMENT_MSG } from '../../utils/validation';
 import toast from 'react-hot-toast';
-
-function initials(name = '') {
-  return name.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() || 'DR';
-}
 
 export default function DoctorProfile() {
   const { updateUserData } = useAuth();
@@ -18,7 +14,6 @@ export default function DoctorProfile() {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Clinical Profile Form
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [departmentId, setDepartmentId] = useState('');
@@ -29,7 +24,6 @@ export default function DoctorProfile() {
   const [breakEndTime, setBreakEndTime] = useState('14:00');
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // Security Form
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -72,16 +66,53 @@ export default function DoctorProfile() {
       toast.error('Name cannot be empty');
       return;
     }
-    if (startTime >= endTime) {
-      toast.error('Start time must be before end time');
+    const cleanedPhone = phoneNumber.replace(/\s+/g, '');
+    if (cleanedPhone && !isValidPhoneNumber(cleanedPhone)) {
+      toast.error(PHONE_REQUIREMENT_MSG);
       return;
+    }
+    if (!startTime || !endTime) {
+      toast.error('Shift start and end times are required');
+      return;
+    }
+    if (startTime >= endTime) {
+      toast.error('Shift start time must be before end time');
+      return;
+    }
+    if (breakTime || breakEndTime) {
+      if (!breakTime || !breakEndTime) {
+        toast.error('Both break start time and break end time must be provided');
+        return;
+      }
+      if (breakTime >= breakEndTime) {
+        toast.error('Break start time must be before break end time');
+        return;
+      }
+      const [bsh, bsm] = breakTime.split(':').map(Number);
+      const [beh, bem] = breakEndTime.split(':').map(Number);
+      const breakMinutes = (beh * 60 + bem) - (bsh * 60 + bsm);
+      if (breakMinutes > 120) {
+        toast.error('Doctor break cannot exceed 2 hours (maximum 120 minutes)');
+        return;
+      }
+      if (breakTime < startTime || breakEndTime > endTime) {
+        toast.error(`Break time must be within shift hours (${formatTime(startTime)} – ${formatTime(endTime)})`);
+        return;
+      }
+      const [ssh, ssm] = startTime.split(':').map(Number);
+      const [seh, sem] = endTime.split(':').map(Number);
+      const shiftMinutes = (seh * 60 + sem) - (ssh * 60 + ssm);
+      if (breakMinutes >= shiftMinutes) {
+        toast.error('Break duration cannot cover or exceed the entire shift duration');
+        return;
+      }
     }
 
     try {
       setSavingProfile(true);
       const res = await updateMyDoctorProfile({
         name: name.trim(),
-        phoneNumber: phoneNumber.trim(),
+        phoneNumber: cleanedPhone,
         departmentId: parseInt(departmentId, 10),
         specialization: specialization.trim(),
         startTime,
@@ -111,7 +142,7 @@ export default function DoctorProfile() {
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match');
+      toast.error('New password and confirmation do not match');
       return;
     }
 
@@ -145,11 +176,8 @@ export default function DoctorProfile() {
             <div className="loading-center"><div className="spinner" /></div>
           ) : (
             <div>
-              {/* Profile Header Hero */}
               <div className="card" style={{ marginBottom: '1.75rem', display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-                <div className="doctor-avatar" style={{ width: 68, height: 68, fontSize: '1.4rem', margin: 0, borderRadius: 'var(--radius-md)' }}>
-                  {initials(name || profile?.name)}
-                </div>
+
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -165,9 +193,7 @@ export default function DoctorProfile() {
                 </div>
               </div>
 
-              {/* Settings Forms */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-                {/* Clinical Details */}
                 <div className="card">
                   <div className="card-header">
                     <h2 className="card-title">Clinical & Personal Details</h2>
@@ -234,7 +260,6 @@ export default function DoctorProfile() {
                       />
                     </div>
 
-                    {/* Schedule Hours */}
                     <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem', marginTop: '0.5rem' }}>
                       <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
                         Working Hours & Schedule
@@ -296,7 +321,6 @@ export default function DoctorProfile() {
                   </form>
                 </div>
 
-                {/* Change Password */}
                 <div className="card">
                   <div className="card-header">
                     <h2 className="card-title">Security & Password</h2>

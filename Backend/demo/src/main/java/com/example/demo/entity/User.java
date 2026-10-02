@@ -12,7 +12,8 @@ import java.util.Set;
 @Entity
 @Table(name = "users",
     uniqueConstraints = {
-        @UniqueConstraint(columnNames = "email")
+        @UniqueConstraint(columnNames = "email"),
+        @UniqueConstraint(columnNames = "phone_number")
     })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class User {
@@ -30,7 +31,7 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Column(name = "phone_number")
+    @Column(name = "phone_number", unique = true)
     private String phoneNumber;
 
     @ManyToMany(fetch = FetchType.EAGER)

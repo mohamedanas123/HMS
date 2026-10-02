@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { format } from 'date-fns';
+import { format, addDays, startOfToday } from 'date-fns';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import Navbar from '../../components/Navbar';
@@ -28,7 +28,7 @@ function minutesToTime(m) {
 
 export default function BookAppointment() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); 
+  const [step, setStep] = useState(1);
   const [departments, setDepartments] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [bookedSlots, setBookedSlots] = useState([]);
@@ -60,7 +60,13 @@ export default function BookAppointment() {
     setStep(3);
   };
 
+  const minBookingDate = addDays(startOfToday(), 1);
+
   const onDateChange = (date) => {
+    if (date && date <= startOfToday()) {
+      toast.error('Same-day booking is not allowed. Please choose a date from tomorrow onwards.');
+      return;
+    }
     setSelectedDate(date);
     setBookedSlots([]);
     setStartTime('');
@@ -68,11 +74,19 @@ export default function BookAppointment() {
     if (date && selectedDoctor) {
       getBookedSlots(selectedDoctor.id, date)
         .then(r => setBookedSlots(r.data))
-        .catch(() => {});
+        .catch(() => { });
     }
   };
 
   const validateSlotSelection = () => {
+    if (!selectedDate) {
+      return { valid: false, message: 'Please select an appointment date.' };
+    }
+
+    if (selectedDate <= startOfToday()) {
+      return { valid: false, message: 'Same-day appointments are not allowed. Please select a date from tomorrow onwards.' };
+    }
+
     if (!startTime || !endTime) {
       return { valid: false, message: 'Please select or enter both start and end time.' };
     }
@@ -163,6 +177,11 @@ export default function BookAppointment() {
   const availableQuickSlots = selectedDate ? getAvailableSlots() : [];
 
   const handleBook = async () => {
+    if (!selectedDate || selectedDate <= startOfToday()) {
+      toast.error('Same-day appointments are not allowed. Please choose a date from tomorrow onwards.');
+      return;
+    }
+
     if (!slotValidation.valid) {
       toast.error(slotValidation.message || 'Please select a valid time');
       return;
@@ -177,9 +196,10 @@ export default function BookAppointment() {
         endTime,
       });
       toast.success('Appointment booked! Waiting for doctor approval.');
-      setStep(5); 
+      setStep(5);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Booking failed');
+      const errorMsg = err.response?.data?.message || err.response?.data?.appointmentDate || 'Booking failed';
+      toast.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -199,7 +219,6 @@ export default function BookAppointment() {
             </div>
           </div>
 
-          {/* Step indicator */}
           <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
             {stepLabels.map((label, i) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -221,7 +240,6 @@ export default function BookAppointment() {
             ))}
           </div>
 
-          {/* Step 1 — Department */}
           {step === 1 && (
             <div className="card">
               <h2 className="card-title" style={{ marginBottom: '1.25rem' }}>Select a Clinical Department</h2>
@@ -241,7 +259,6 @@ export default function BookAppointment() {
             </div>
           )}
 
-          {/* Step 2 — Doctor */}
           {step === 2 && (
             <div className="card">
               <div className="card-header">
@@ -271,38 +288,39 @@ export default function BookAppointment() {
             </div>
           )}
 
-          {/* Step 3 — Date & Time */}
           {step === 3 && selectedDoctor && (
             <div className="grid-2">
-              {/* Date Picker */}
               <div className="card">
                 <div className="card-header">
-                  <h2 className="card-title">Select Date</h2>
+                  <div>
+                    <h2 className="card-title">Select Date</h2>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Advance booking only (min. 1 day in advance)</span>
+                  </div>
                   <button className="btn btn-ghost btn-sm" onClick={() => setStep(2)}>&larr; Back to Doctors</button>
+                </div>
+                <div style={{ marginBottom: '1rem', padding: '0.6rem 0.85rem', background: 'var(--brand-primary-soft)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--brand-border)', fontSize: '0.775rem', color: 'var(--brand-primary)' }}>
+                  ℹ Same-day appointments are disabled. Please choose tomorrow or a later date.
                 </div>
                 <DatePicker
                   inline
                   selected={selectedDate}
                   onChange={onDateChange}
-                  minDate={new Date()}
+                  minDate={minBookingDate}
                   filterDate={d => d.getDay() !== 0}
                 />
               </div>
 
-              {/* Time Selection & Availability Visualizer */}
               <div className="card">
                 <div className="card-header">
                   <h2 className="card-title">Select Time Slot</h2>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>Max 1 hour</span>
                 </div>
 
-                {/* Doctor Shift Schedule Banner */}
                 <div style={{ padding: '0.85rem 1rem', background: 'var(--brand-primary-soft)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--brand-border)', marginBottom: '1.25rem', fontSize: '0.8rem', color: 'var(--brand-primary)' }}>
                   <strong>Dr. {selectedDoctor.name} schedule:</strong> {formatTime(selectedDoctor.startTime)} – {formatTime(selectedDoctor.endTime)}
                   {selectedDoctor.breakTime && ` (Break: ${formatTime(selectedDoctor.breakTime)} – ${formatTime(selectedDoctor.breakEndTime)})`}
                 </div>
 
-                {/* Unavailable Timings Section (Booked Slots + Break Time) */}
                 {selectedDate && (
                   <div style={{ marginBottom: '1.25rem', padding: '0.85rem', background: 'var(--danger-light)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(225,29,72,0.2)' }}>
                     <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--danger)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -310,7 +328,6 @@ export default function BookAppointment() {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                      {/* Doctor Break Time */}
                       {selectedDoctor.breakTime && (
                         <div style={{ fontSize: '0.75rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                           <span style={{ padding: '2px 6px', background: '#fff', borderRadius: 'var(--radius-xs)', fontWeight: 600 }}>
@@ -320,7 +337,6 @@ export default function BookAppointment() {
                         </div>
                       )}
 
-                      {/* Already Booked Slots by Other Users */}
                       {bookedSlots.length > 0 ? (
                         bookedSlots.map((s, i) => (
                           <div key={i} style={{ fontSize: '0.75rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -339,7 +355,6 @@ export default function BookAppointment() {
                   </div>
                 )}
 
-                {/* Quick Pick Available Slots */}
                 {selectedDate && availableQuickSlots.length > 0 && (
                   <div style={{ marginBottom: '1.25rem' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: '0.5rem' }}>
@@ -367,7 +382,6 @@ export default function BookAppointment() {
                   </div>
                 )}
 
-                {/* Custom Time Pickers */}
                 <div className="form-grid form-grid-2">
                   <div className="form-group">
                     <label className="form-label">Start time</label>
@@ -391,7 +405,6 @@ export default function BookAppointment() {
                   </div>
                 </div>
 
-                {/* Real-time Validation Message Banner */}
                 {startTime && endTime && (
                   <div style={{
                     marginTop: '0.85rem',
@@ -428,7 +441,6 @@ export default function BookAppointment() {
             </div>
           )}
 
-          {/* Step 4 — Confirm */}
           {step === 4 && (
             <div className="card" style={{ maxWidth: 520, margin: '0 auto' }}>
               <div className="card-header">
@@ -454,7 +466,6 @@ export default function BookAppointment() {
                 Your appointment will be set to <strong style={{ color: 'var(--warning)' }}>Pending</strong> until the doctor approves it.
               </p>
 
-              {/* Action Buttons with clear Back button */}
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
                 <button
                   type="button"
@@ -478,7 +489,6 @@ export default function BookAppointment() {
             </div>
           )}
 
-          {/* Step 5 — Success View */}
           {step === 5 && (
             <div className="card" style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center', padding: '2.5rem 2rem' }}>
               <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--success-light)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.75rem', margin: '0 auto 1.25rem' }}>

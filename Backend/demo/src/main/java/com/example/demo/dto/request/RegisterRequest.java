@@ -20,5 +20,7 @@ public class RegisterRequest {
     @Pattern(regexp = "^(?=.*[a-zA-Z])(?=.*\\d).+$", message = "Password must contain at least one letter and one number")
     private String password;
 
+    @NotBlank(message = "Phone number is required")
+    @Pattern(regexp = "^\\+?[0-9\\s\\-\\(\\)]{10,20}$", message = "Please enter a valid phone number (10 to 15 digits)")
     private String phoneNumber;
 }

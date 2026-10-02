@@ -16,6 +16,7 @@ public class DoctorProfileUpdateRequest {
     @NotBlank(message = "Name cannot be empty")
     private String name;
 
+    @jakarta.validation.constraints.Pattern(regexp = "^$|^\\+?[0-9\\s\\-\\(\\)]{10,20}$", message = "Please enter a valid phone number (10 to 15 digits)")
     private String phoneNumber;
 
     private Integer departmentId;

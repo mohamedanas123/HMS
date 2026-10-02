@@ -42,13 +42,33 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
+        Map<String, Object> body = new HashMap<>();
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(err -> {
-            String field = ((FieldError) err).getField();
+        String firstMsg = null;
+        for (org.springframework.validation.ObjectError err : ex.getBindingResult().getAllErrors()) {
+            String field = err instanceof FieldError ? ((FieldError) err).getField() : err.getObjectName();
             errors.put(field, err.getDefaultMessage());
-        });
-        return ResponseEntity.badRequest().body(errors);
+            if (firstMsg == null) {
+                firstMsg = err.getDefaultMessage();
+            }
+        }
+        body.put("errors", errors);
+        body.put("message", firstMsg != null ? firstMsg : "Validation failed");
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(org.springframework.dao.DataIntegrityViolationException ex) {
+        log.error("Data integrity violation: {}", ex.getMessage());
+        String msg = "Cannot complete operation due to database constraints.";
+        String exMsg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+        if (exMsg.contains("phone_number")) {
+            msg = "Phone number is already in use.";
+        } else if (exMsg.contains("email")) {
+            msg = "Email is already in use.";
+        }
+        return buildResponse(HttpStatus.CONFLICT, msg);
     }
 
     @ExceptionHandler(Exception.class)

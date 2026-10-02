@@ -50,7 +50,6 @@ export default function MyAppointments() {
             <h1 className="page-title">My Appointments</h1>
           </div>
 
-          {/* Filter tabs */}
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
             {tabs.map(t => (
               <button
@@ -109,7 +108,6 @@ export default function MyAppointments() {
         </div>
       </div>
 
-      {/* Prescription modal */}
       {selected && (
         <Modal title="Prescription Notes" onClose={() => setSelected(null)}>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: '0.75rem' }}>

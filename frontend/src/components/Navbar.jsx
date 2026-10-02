@@ -4,24 +4,24 @@ import { useAuth } from '../context/AuthContext';
 import { getUnreadCount } from '../api/notificationApi';
 
 const patientNav = [
-  { to: '/patient/dashboard',    label: 'Dashboard' },
-  { to: '/patient/book',         label: 'Book Visit' },
+  { to: '/patient/dashboard', label: 'Dashboard' },
+  { to: '/patient/book', label: 'Book Visit' },
   { to: '/patient/appointments', label: 'Appointments' },
-  { to: '/patient/profile',      label: 'Profile' },
+  { to: '/patient/profile', label: 'Profile' },
 ];
 
 const doctorNav = [
-  { to: '/doctor/dashboard',     label: 'Dashboard' },
-  { to: '/doctor/appointments',  label: 'Clinical Schedule' },
-  { to: '/doctor/profile',       label: 'Profile' },
+  { to: '/doctor/dashboard', label: 'Dashboard' },
+  { to: '/doctor/appointments', label: 'Clinical Schedule' },
+  { to: '/doctor/profile', label: 'Profile' },
 ];
 
 const adminNav = [
-  { to: '/admin/dashboard',      label: 'Console' },
-  { to: '/admin/departments',    label: 'Departments' },
-  { to: '/admin/doctors',        label: 'Doctors' },
-  { to: '/admin/appointments',   label: 'Appointments' },
-  { to: '/admin/profile',        label: 'Profile' },
+  { to: '/admin/dashboard', label: 'Dashboard' },
+  { to: '/admin/departments', label: 'Departments' },
+  { to: '/admin/doctors', label: 'Doctors' },
+  { to: '/admin/appointments', label: 'Appointments' },
+  { to: '/admin/profile', label: 'Profile' },
 ];
 
 function initials(name = '') {
@@ -43,20 +43,20 @@ export default function Navbar() {
 
   const navItems = hasRole('ROLE_ADMIN') ? adminNav
     : hasRole('ROLE_DOCTOR') ? doctorNav
-    : patientNav;
+      : patientNav;
 
   const notifPath = hasRole('ROLE_ADMIN') ? '/admin/notifications'
     : hasRole('ROLE_DOCTOR') ? '/doctor/notifications'
-    : '/patient/notifications';
+      : '/patient/notifications';
 
   const profilePath = hasRole('ROLE_ADMIN') ? '/admin/profile'
     : hasRole('ROLE_DOCTOR') ? '/doctor/profile'
-    : '/patient/profile';
+      : '/patient/profile';
 
   useEffect(() => {
     getUnreadCount()
       .then(r => setUnread(r.data?.count || 0))
-      .catch(() => {});
+      .catch(() => { });
   }, [location.pathname]);
 
   useEffect(() => {
@@ -73,7 +73,6 @@ export default function Navbar() {
   return (
     <header className="navbar-root">
       <div className="navbar-container">
-        {/* Brand Identity */}
         <div className="navbar-brand">
           <NavLink to="/" className="brand-link" aria-label="MediBook Home">
             <span className="brand-mark-text">MB</span>
@@ -84,7 +83,6 @@ export default function Navbar() {
           </NavLink>
         </div>
 
-        {/* Desktop Navigation Links */}
         <nav className="navbar-nav-desktop" aria-label="Main Navigation">
           {navItems.map(({ to, label }) => (
             <NavLink
@@ -97,7 +95,6 @@ export default function Navbar() {
           ))}
         </nav>
 
-        {/* Right Suite: Quick Actions + Notification + User Controls */}
         <div className="navbar-actions">
           {isPatient && (
             <NavLink to="/patient/book" className="btn-nav-action" title="Quick Appointment Booking">
@@ -105,7 +102,6 @@ export default function Navbar() {
             </NavLink>
           )}
 
-          {/* Notifications Button */}
           <button
             className={`navbar-text-btn ${location.pathname === notifPath ? 'active' : ''}`}
             onClick={() => navigate(notifPath)}
@@ -120,7 +116,6 @@ export default function Navbar() {
             )}
           </button>
 
-          {/* User Profile Pill */}
           <div className="navbar-user-chip">
             <NavLink
               to={profilePath}
@@ -145,7 +140,6 @@ export default function Navbar() {
             </button>
           </div>
 
-          {/* Mobile Text Toggle */}
           <button
             className="navbar-mobile-toggle"
             onClick={() => setMobileOpen(prev => !prev)}
@@ -157,7 +151,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Drawer */}
       {mobileOpen && (
         <div className="navbar-mobile-drawer">
           <nav className="navbar-mobile-nav">

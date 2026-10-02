@@ -53,7 +53,6 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Patient */}
           <Route path="/patient/dashboard" element={
             <RoleRoute role="ROLE_PATIENT"><PatientDashboard /></RoleRoute>
           } />
@@ -70,7 +69,6 @@ export default function App() {
             <RoleRoute role="ROLE_PATIENT"><PatientProfile /></RoleRoute>
           } />
 
-          {/* Doctor */}
           <Route path="/doctor/dashboard" element={
             <RoleRoute role="ROLE_DOCTOR"><DoctorDashboard /></RoleRoute>
           } />
@@ -84,7 +82,6 @@ export default function App() {
             <RoleRoute role="ROLE_DOCTOR"><DoctorProfile /></RoleRoute>
           } />
 
-          {/* Admin */}
           <Route path="/admin/dashboard" element={
             <RoleRoute role="ROLE_ADMIN"><AdminDashboard /></RoleRoute>
           } />

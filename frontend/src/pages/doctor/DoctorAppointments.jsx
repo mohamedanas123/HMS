@@ -11,7 +11,7 @@ export default function DoctorAppointments() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
-  const [completing, setCompleting] = useState(null); // appointment being completed
+  const [completing, setCompleting] = useState(null);
   const [prescription, setPrescription] = useState('');
   const [working, setWorking] = useState(false);
 
@@ -39,6 +39,16 @@ export default function DoctorAppointments() {
   };
 
   const doComplete = async () => {
+    if (!completing) return;
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    if (completing.appointmentDate !== todayStr) {
+      toast.error(
+        completing.appointmentDate > todayStr
+          ? 'Cannot complete future appointments'
+          : "Doctors can only complete today's appointments"
+      );
+      return;
+    }
     setWorking(true);
     try {
       await completeAppointment(completing.id, prescription);
@@ -98,11 +108,35 @@ export default function DoctorAppointments() {
                                 </button>
                               </>
                             )}
-                            {a.status === 'APPROVED' && (
-                              <button className="btn btn-primary btn-sm" onClick={() => { setCompleting(a); setPrescription(''); }}>
-                                Complete
-                              </button>
-                            )}
+                            {a.status === 'APPROVED' && (() => {
+                              const todayStr = format(new Date(), 'yyyy-MM-dd');
+                              const isToday = a.appointmentDate === todayStr;
+                              const isFuture = a.appointmentDate > todayStr;
+                              return (
+                                <button
+                                  className="btn btn-primary btn-sm"
+                                  disabled={!isToday || working}
+                                  title={
+                                    isFuture
+                                      ? "Future appointments cannot be completed"
+                                      : !isToday
+                                      ? "Doctors can only complete today's appointments"
+                                      : "Complete Appointment"
+                                  }
+                                  onClick={() => {
+                                    if (!isToday) {
+                                      toast.error(isFuture ? "Cannot complete future appointments" : "Doctors can only complete today's appointments");
+                                      return;
+                                    }
+                                    setCompleting(a);
+                                    setPrescription('');
+                                  }}
+                                  style={!isToday ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                                >
+                                  Complete
+                                </button>
+                              );
+                            })()}
                             {a.status === 'COMPLETED' && a.prescriptionNotes && (
                               <button className="btn btn-ghost btn-sm" onClick={() => setCompleting({ ...a, viewOnly: true })}>
                                 View Prescription

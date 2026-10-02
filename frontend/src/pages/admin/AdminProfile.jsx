@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Navbar from '../../components/Navbar';
 import { getCurrentUserProfile, updateCurrentUserProfile, changePassword } from '../../api/userApi';
 import { useAuth } from '../../context/AuthContext';
-import { isValidPassword, PASSWORD_REQUIREMENT_MSG } from '../../utils/validation';
+import { isValidPassword, PASSWORD_REQUIREMENT_MSG, isValidPhoneNumber, PHONE_REQUIREMENT_MSG } from '../../utils/validation';
 import toast from 'react-hot-toast';
 
 function initials(name = '') {
@@ -47,10 +47,15 @@ export default function AdminProfile() {
       toast.error('Name cannot be empty');
       return;
     }
+    const cleanedPhone = phoneNumber.replace(/\s+/g, '');
+    if (cleanedPhone && !isValidPhoneNumber(cleanedPhone)) {
+      toast.error(PHONE_REQUIREMENT_MSG);
+      return;
+    }
 
     try {
       setSavingProfile(true);
-      const res = await updateCurrentUserProfile({ name: name.trim(), phoneNumber: phoneNumber.trim() });
+      const res = await updateCurrentUserProfile({ name: name.trim(), phoneNumber: cleanedPhone });
       setProfile(res.data);
       updateUserData({ name: res.data.name, phoneNumber: res.data.phoneNumber });
       toast.success('Admin details updated successfully');
@@ -106,7 +111,6 @@ export default function AdminProfile() {
             <div className="loading-center"><div className="spinner" /></div>
           ) : (
             <div>
-              {/* Profile Header Hero */}
               <div className="card" style={{ marginBottom: '1.75rem', display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
                 <div className="doctor-avatar" style={{ width: 68, height: 68, fontSize: '1.4rem', margin: 0, borderRadius: 'var(--radius-md)' }}>
                   {initials(name || profile?.name)}
@@ -125,9 +129,7 @@ export default function AdminProfile() {
                 </div>
               </div>
 
-              {/* Settings Forms */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-                {/* Personal Information */}
                 <div className="card">
                   <div className="card-header">
                     <h2 className="card-title">Admin Account Details</h2>
@@ -179,7 +181,6 @@ export default function AdminProfile() {
                   </form>
                 </div>
 
-                {/* Change Password */}
                 <div className="card">
                   <div className="card-header">
                     <h2 className="card-title">Security & Password</h2>

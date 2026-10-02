@@ -9,7 +9,7 @@ const empty = { departmentName: '', departmentDescription: '' };
 export default function ManageDepartments() {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null); // null | 'create' | department object
+  const [modal, setModal] = useState(null);
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
 
@@ -41,9 +41,14 @@ export default function ManageDepartments() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this department?')) return;
-    try { await deleteDepartment(id); toast.success('Deleted'); load(); }
-    catch (e) { toast.error(e.response?.data?.message || 'Failed to delete'); }
+    if (!window.confirm('Delete this department? All associated doctors and their appointments will also be deleted.')) return;
+    try {
+      await deleteDepartment(id);
+      toast.success('Department deleted successfully');
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to delete department');
+    }
   };
 
   return (

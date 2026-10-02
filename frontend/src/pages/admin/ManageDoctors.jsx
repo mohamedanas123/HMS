@@ -4,7 +4,7 @@ import Modal from '../../components/Modal';
 import { getDoctors, createDoctor, updateDoctor, deleteDoctor } from '../../api/doctorApi';
 import { getDepartments } from '../../api/departmentApi';
 import { formatTime } from '../../utils/formatTime';
-import { isValidPassword, PASSWORD_REQUIREMENT_MSG } from '../../utils/validation';
+import { isValidPassword, PASSWORD_REQUIREMENT_MSG, isValidPhoneNumber, PHONE_REQUIREMENT_MSG } from '../../utils/validation';
 import toast from 'react-hot-toast';
 
 const empty = { name: '', email: '', password: '', phoneNumber: '', departmentId: '', specialization: '', startTime: '09:00', endTime: '17:00', breakTime: '13:00', breakEndTime: '14:00' };
@@ -49,9 +49,50 @@ export default function ManageDoctors() {
       toast.error(PASSWORD_REQUIREMENT_MSG);
       return;
     }
+    const cleanedPhone = form.phoneNumber ? form.phoneNumber.replace(/\s+/g, '') : '';
+    if (!cleanedPhone || !isValidPhoneNumber(cleanedPhone)) {
+      toast.error(PHONE_REQUIREMENT_MSG);
+      return;
+    }
+    if (!form.startTime || !form.endTime) {
+      toast.error('Shift start and end times are required');
+      return;
+    }
+    if (form.startTime >= form.endTime) {
+      toast.error('Shift start time must be before end time');
+      return;
+    }
+    if (form.breakTime || form.breakEndTime) {
+      if (!form.breakTime || !form.breakEndTime) {
+        toast.error('Both break start time and break end time must be provided');
+        return;
+      }
+      if (form.breakTime >= form.breakEndTime) {
+        toast.error('Break start time must be before break end time');
+        return;
+      }
+      const [bsh, bsm] = form.breakTime.split(':').map(Number);
+      const [beh, bem] = form.breakEndTime.split(':').map(Number);
+      const breakMinutes = (beh * 60 + bem) - (bsh * 60 + bsm);
+      if (breakMinutes > 120) {
+        toast.error('Doctor break cannot exceed 2 hours (maximum 120 minutes)');
+        return;
+      }
+      if (form.breakTime < form.startTime || form.breakEndTime > form.endTime) {
+        toast.error(`Break time must be within shift hours (${formatTime(form.startTime)} – ${formatTime(form.endTime)})`);
+        return;
+      }
+      const [ssh, ssm] = form.startTime.split(':').map(Number);
+      const [seh, sem] = form.endTime.split(':').map(Number);
+      const shiftMinutes = (seh * 60 + sem) - (ssh * 60 + ssm);
+      if (breakMinutes >= shiftMinutes) {
+        toast.error('Break duration cannot cover or exceed the entire shift duration');
+        return;
+      }
+    }
     setSaving(true);
     try {
-      const payload = { ...form, departmentId: Number(form.departmentId) };
+      const payload = { ...form, phoneNumber: cleanedPhone, departmentId: Number(form.departmentId) };
       if (modal === 'create') { await createDoctor(payload); toast.success('Doctor added'); }
       else { await updateDoctor(modal.id, payload); toast.success('Doctor updated'); }
       setModal(null);
@@ -61,9 +102,14 @@ export default function ManageDoctors() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this doctor and their user account?')) return;
-    try { await deleteDoctor(id); toast.success('Deleted'); load(); }
-    catch (e) { toast.error(e.response?.data?.message || 'Failed'); }
+    if (!window.confirm('Delete this doctor? Their appointments and user account will also be deleted.')) return;
+    try { 
+      await deleteDoctor(id); 
+      toast.success('Doctor deleted successfully'); 
+      load(); 
+    } catch (e) { 
+      toast.error(e.response?.data?.message || 'Failed to delete doctor'); 
+    }
   };
 
   return (
@@ -169,8 +215,8 @@ export default function ManageDoctors() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Phone Number</label>
-              <input className="form-input" placeholder="+91 98765 43210" value={form.phoneNumber} onChange={e => set('phoneNumber', e.target.value)} />
+              <label className="form-label">Phone Number *</label>
+              <input className="form-input" placeholder="98765 43210" value={form.phoneNumber} onChange={e => set('phoneNumber', e.target.value)} />
             </div>
 
             <div className="form-grid form-grid-2">

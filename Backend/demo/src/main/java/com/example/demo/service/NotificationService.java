@@ -1,18 +1,19 @@
 package com.example.demo.service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.demo.dto.response.NotificationResponse;
 import com.example.demo.entity.Notification;
 import com.example.demo.entity.User;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.NotificationRepository;
 import com.example.demo.security.UserDetailsImpl;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class NotificationService {
@@ -20,7 +21,6 @@ public class NotificationService {
     @Autowired
     private NotificationRepository notificationRepository;
 
-    /** Called internally to create notifications. */
     @Transactional
     public void send(User user, String title, String message) {
         Notification n = new Notification();

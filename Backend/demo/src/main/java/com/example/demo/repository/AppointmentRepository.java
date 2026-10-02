@@ -2,6 +2,7 @@ package com.example.demo.repository;
 
 import com.example.demo.entity.Appointment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -11,7 +12,10 @@ import java.util.List;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
-    @Query("SELECT a FROM Appointment a JOIN FETCH a.doctor d JOIN FETCH d.user JOIN FETCH d.department JOIN FETCH a.patient WHERE a.patient.id = :patientId ORDER BY a.appointmentDate DESC, a.startTime DESC")
+    @Query("SELECT a FROM Appointment a " +
+            "JOIN FETCH a.doctor d JOIN FETCH d.user " +
+            "JOIN FETCH d.department JOIN FETCH a.patient " +
+            "WHERE a.patient.id = :patientId ORDER BY a.appointmentDate DESC, a.startTime DESC")
     List<Appointment> findByPatientIdOrderByAppointmentDateDescStartTimeDesc(@Param("patientId") Long patientId);
 
     @Query("SELECT a FROM Appointment a JOIN FETCH a.doctor d JOIN FETCH d.user JOIN FETCH d.department JOIN FETCH a.patient WHERE d.id = :doctorId ORDER BY a.appointmentDate DESC, a.startTime DESC")
@@ -49,4 +53,12 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
         ORDER BY a.startTime
     """)
     List<Appointment> findBookedSlots(@Param("doctorId") Long doctorId, @Param("date") LocalDate date);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM Appointment a WHERE a.doctor.id = :doctorId")
+    void deleteByDoctorId(@Param("doctorId") Long doctorId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM Appointment a WHERE a.patient.id = :patientId")
+    void deleteByPatientId(@Param("patientId") Long patientId);
 }

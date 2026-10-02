@@ -7,6 +7,9 @@ import com.example.demo.entity.ERole;
 import com.example.demo.entity.User;
 import com.example.demo.exception.BadRequestException;
 import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.repository.AppointmentRepository;
+import com.example.demo.repository.DoctorRepository;
+import com.example.demo.repository.NotificationRepository;
 import com.example.demo.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +29,15 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private DoctorRepository doctorRepository;
+
+    @Autowired
+    private AppointmentRepository appointmentRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -54,7 +66,20 @@ public class UserService {
     public UserResponse updateUser(Long id, UserUpdateRequest request) {
         User user = findOrThrow(id);
         user.setName(request.getName());
-        user.setPhoneNumber(request.getPhoneNumber());
+
+        String rawPhone = request.getPhoneNumber();
+        if (rawPhone != null && !rawPhone.isBlank()) {
+            if (!com.example.demo.util.ValidationUtils.isValidPhoneNumber(rawPhone)) {
+                throw new BadRequestException("Invalid phone number format. Must contain 10 to 15 digits.");
+            }
+            String cleanPhone = rawPhone.replaceAll("\\s+", "");
+            if (userRepository.existsByPhoneNumberAndIdNot(cleanPhone, id)) {
+                throw new BadRequestException("Phone number already in use by another account: " + rawPhone);
+            }
+            user.setPhoneNumber(cleanPhone);
+        } else {
+            user.setPhoneNumber(null);
+        }
 
         User updatedUser = userRepository.save(user);
         log.info("User id {} updated successfully", id);
@@ -85,7 +110,21 @@ public class UserService {
     @Transactional
     public void deleteUser(Long id) {
         User user = findOrThrow(id);
+
+        doctorRepository.findByUserId(id).ifPresent(doctor -> {
+            appointmentRepository.deleteByDoctorId(doctor.getId());
+            doctorRepository.delete(doctor);
+            doctorRepository.flush();
+        });
+
+        appointmentRepository.deleteByPatientId(id);
+
+        notificationRepository.deleteByUserId(id);
+
+        user.getRoles().clear();
         userRepository.delete(user);
+        userRepository.flush();
+
         log.info("User id {} deleted successfully", id);
     }
 

@@ -43,9 +43,7 @@ export default function AllAppointments() {
             </div>
           </div>
 
-          {/* Filter Bar */}
           <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Search */}
             <input
               className="form-input"
               placeholder="Search patient or doctor..."
@@ -54,7 +52,6 @@ export default function AllAppointments() {
               style={{ maxWidth: 220 }}
             />
 
-            {/* Department Filter */}
             <select
               className="form-select"
               value={selectedDept}
@@ -68,7 +65,6 @@ export default function AllAppointments() {
               ))}
             </select>
 
-            {/* Date Filter */}
             <input
               className="form-input"
               type="date"
@@ -79,7 +75,6 @@ export default function AllAppointments() {
               aria-label="Filter by date"
             />
 
-            {/* Status Tabs */}
             <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
               {tabs.map(t => (
                 <button
@@ -92,7 +87,6 @@ export default function AllAppointments() {
               ))}
             </div>
 
-            {/* Reset Button */}
             {hasActiveFilters && (
               <button
                 className="btn btn-ghost btn-sm"

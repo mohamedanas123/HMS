@@ -55,6 +55,19 @@ public class AuthService {
             throw new BadRequestException("Password must be at least 6 characters long and contain both letters and numbers");
         }
 
+        if (request.getPhoneNumber() == null || request.getPhoneNumber().isBlank()) {
+            throw new BadRequestException("Phone number is required");
+        }
+
+        if (!com.example.demo.util.ValidationUtils.isValidPhoneNumber(request.getPhoneNumber())) {
+            throw new BadRequestException("Invalid phone number format. Must contain 10 to 15 digits.");
+        }
+
+        String cleanPhone = request.getPhoneNumber().replaceAll("\\s+", "");
+        if (userRepository.existsByPhoneNumber(cleanPhone)) {
+            throw new BadRequestException("Phone number already in use: " + request.getPhoneNumber());
+        }
+
         Role patientRole = roleRepository.findByName(ERole.ROLE_PATIENT)
             .orElseThrow(() -> new RuntimeException("ROLE_PATIENT not found. Run data seed first."));
 
@@ -62,7 +75,7 @@ public class AuthService {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setPhoneNumber(request.getPhoneNumber());
+        user.setPhoneNumber(cleanPhone);
         user.setRoles(Set.of(patientRole));
 
         userRepository.save(user);

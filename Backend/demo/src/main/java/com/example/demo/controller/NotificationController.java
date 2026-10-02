@@ -26,10 +26,6 @@ public class NotificationController {
     public ResponseEntity<Map<String, Long>> getUnreadCount() {
         return ResponseEntity.ok(Map.of("count", notificationService.getUnreadCount()));
     }
-
-    /**
-     * Object-level: only the notification owner can mark it as read.
-     */
     @PatchMapping("/{id}/read")
     @PreAuthorize("@securityService.isNotificationOwner(#id)")
     public ResponseEntity<NotificationResponse> markRead(@PathVariable Long id) {

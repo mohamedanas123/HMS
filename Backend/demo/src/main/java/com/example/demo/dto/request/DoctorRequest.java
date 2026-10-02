@@ -12,7 +12,6 @@ import java.time.LocalTime;
 @Data
 public class DoctorRequest {
 
-    // User fields (for creating the doctor's user account)
     @NotBlank
     private String name;
 
@@ -24,9 +23,10 @@ public class DoctorRequest {
     @Pattern(regexp = "^(?=.*[a-zA-Z])(?=.*\\d).+$", message = "Password must contain at least one letter and one number")
     private String password;
 
+    @NotBlank(message = "Phone number is required")
+    @Pattern(regexp = "^\\+?[0-9\\s\\-\\(\\)]{10,20}$", message = "Please enter a valid phone number (10 to 15 digits)")
     private String phoneNumber;
 
-    // Doctor fields
     @NotNull(message = "Department is required")
     private Integer departmentId;
 

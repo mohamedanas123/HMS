@@ -1,5 +1,6 @@
 package com.example.demo.dto.request;
 
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -13,6 +14,7 @@ public class AppointmentRequest {
     private Long doctorId;
 
     @NotNull(message = "Appointment date is required")
+    @Future(message = "Same-day appointments are not allowed. Please choose a future date.")
     private LocalDate appointmentDate;
 
     @NotNull(message = "Start time is required")

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { isValidPassword, PASSWORD_REQUIREMENT_MSG } from '../../utils/validation';
+import { isValidPassword, PASSWORD_REQUIREMENT_MSG, isValidPhoneNumber, PHONE_REQUIREMENT_MSG } from '../../utils/validation';
 import toast from 'react-hot-toast';
 
 export default function Register() {
@@ -18,9 +18,14 @@ export default function Register() {
       toast.error(PASSWORD_REQUIREMENT_MSG);
       return;
     }
+    const cleanedPhone = (form.phoneNumber || '').replace(/\s+/g, '');
+    if (!isValidPhoneNumber(cleanedPhone)) {
+      toast.error(PHONE_REQUIREMENT_MSG);
+      return;
+    }
     setLoading(true);
     try {
-      await register(form);
+      await register({ ...form, phoneNumber: cleanedPhone });
       toast.success('Account created successfully!');
       navigate('/patient/dashboard');
     } catch (err) {
@@ -54,7 +59,7 @@ export default function Register() {
 
           <div className="form-group">
             <label className="form-label">Phone number</label>
-            <input id="reg-phone" className="form-input" name="phoneNumber" placeholder="+91 98765 43210" value={form.phoneNumber} onChange={handleChange} />
+            <input id="reg-phone" className="form-input" type="tel" name="phoneNumber" placeholder="98765 43210" value={form.phoneNumber} onChange={handleChange} required />
           </div>
 
           <div className="form-group">

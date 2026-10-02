@@ -1,12 +1,11 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.request.DoctorProfileUpdateRequest;
-import com.example.demo.dto.request.DoctorRequest;
-import com.example.demo.dto.response.DoctorResponse;
-import com.example.demo.entity.*;
-import com.example.demo.exception.BadRequestException;
-import com.example.demo.exception.ResourceNotFoundException;
-import com.example.demo.repository.*;
+import java.time.Duration;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,9 +13,23 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import com.example.demo.dto.request.DoctorProfileUpdateRequest;
+import com.example.demo.dto.request.DoctorRequest;
+import com.example.demo.dto.response.DoctorResponse;
+import com.example.demo.entity.Department;
+import com.example.demo.entity.Doctor;
+import com.example.demo.entity.ERole;
+import com.example.demo.entity.Role;
+import com.example.demo.entity.User;
+import com.example.demo.exception.BadRequestException;
+import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.repository.AppointmentRepository;
+import com.example.demo.repository.DepartmentRepository;
+import com.example.demo.repository.DoctorRepository;
+import com.example.demo.repository.NotificationRepository;
+import com.example.demo.repository.RoleRepository;
+import com.example.demo.repository.UserRepository;
+import com.example.demo.util.ValidationUtils;
 
 @Service
 @Transactional(readOnly = true)
@@ -35,6 +48,12 @@ public class DoctorService {
 
     @Autowired
     private DepartmentRepository departmentRepository;
+
+    @Autowired
+    private AppointmentRepository appointmentRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -66,17 +85,26 @@ public class DoctorService {
         Doctor doctor = doctorRepository.findByUserId(userId)
             .orElseThrow(() -> new ResourceNotFoundException("Doctor profile not found for user: " + userId));
 
-        if (request.getStartTime().isAfter(request.getEndTime())) {
-            throw new BadRequestException("Start time must be before end time");
-        }
+        validateShiftAndBreak(request.getStartTime(), request.getEndTime(), request.getBreakTime(), request.getBreakEndTime());
 
-        // Update user fields
         User user = doctor.getUser();
         user.setName(request.getName());
-        user.setPhoneNumber(request.getPhoneNumber());
+
+        String rawPhone = request.getPhoneNumber();
+        if (rawPhone != null && !rawPhone.isBlank()) {
+            if (!ValidationUtils.isValidPhoneNumber(rawPhone)) {
+                throw new BadRequestException("Invalid phone number format. Must contain 10 to 15 digits.");
+            }
+            String cleanPhone = rawPhone.replaceAll("\\s+", "");
+            if (userRepository.existsByPhoneNumberAndIdNot(cleanPhone, user.getId())) {
+                throw new BadRequestException("Phone number already in use by another account: " + rawPhone);
+            }
+            user.setPhoneNumber(cleanPhone);
+        } else {
+            user.setPhoneNumber(null);
+        }
         userRepository.save(user);
 
-        // Update doctor fields
         if (request.getDepartmentId() != null) {
             Department dept = departmentRepository.findById(request.getDepartmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found: " + request.getDepartmentId()));
@@ -101,9 +129,19 @@ public class DoctorService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BadRequestException("Email already in use: " + request.getEmail());
         }
-        if (request.getStartTime().isAfter(request.getEndTime())) {
-            throw new BadRequestException("Start time must be before end time");
+
+        if (request.getPhoneNumber() == null || request.getPhoneNumber().isBlank()) {
+            throw new BadRequestException("Phone number is required");
         }
+        if (!ValidationUtils.isValidPhoneNumber(request.getPhoneNumber())) {
+            throw new BadRequestException("Invalid phone number format. Must contain 10 to 15 digits.");
+        }
+        String cleanPhone = request.getPhoneNumber().replaceAll("\\s+", "");
+        if (userRepository.existsByPhoneNumber(cleanPhone)) {
+            throw new BadRequestException("Phone number already in use: " + request.getPhoneNumber());
+        }
+
+        validateShiftAndBreak(request.getStartTime(), request.getEndTime(), request.getBreakTime(), request.getBreakEndTime());
 
         Role doctorRole = roleRepository.findByName(ERole.ROLE_DOCTOR)
             .orElseThrow(() -> new RuntimeException("ROLE_DOCTOR not found"));
@@ -115,7 +153,7 @@ public class DoctorService {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setPhoneNumber(request.getPhoneNumber());
+        user.setPhoneNumber(cleanPhone);
         user.setRoles(Set.of(doctorRole));
         userRepository.save(user);
 
@@ -138,13 +176,26 @@ public class DoctorService {
         Department dept = departmentRepository.findById(request.getDepartmentId())
             .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
 
-        // Update user info
+        validateShiftAndBreak(request.getStartTime(), request.getEndTime(), request.getBreakTime(), request.getBreakEndTime());
+
         User user = doctor.getUser();
         user.setName(request.getName());
-        user.setPhoneNumber(request.getPhoneNumber());
+
+        String rawPhone = request.getPhoneNumber();
+        if (rawPhone != null && !rawPhone.isBlank()) {
+            if (!ValidationUtils.isValidPhoneNumber(rawPhone)) {
+                throw new BadRequestException("Invalid phone number format. Must contain 10 to 15 digits.");
+            }
+            String cleanPhone = rawPhone.replaceAll("\\s+", "");
+            if (userRepository.existsByPhoneNumberAndIdNot(cleanPhone, user.getId())) {
+                throw new BadRequestException("Phone number already in use by another account: " + rawPhone);
+            }
+            user.setPhoneNumber(cleanPhone);
+        } else {
+            user.setPhoneNumber(null);
+        }
         userRepository.save(user);
 
-        // Update doctor info
         doctor.setDepartment(dept);
         doctor.setSpecialization(request.getSpecialization());
         doctor.setStartTime(request.getStartTime());
@@ -155,13 +206,60 @@ public class DoctorService {
         return toResponse(doctorRepository.save(doctor));
     }
 
+    private void validateShiftAndBreak(LocalTime startTime, LocalTime endTime, LocalTime breakTime, LocalTime breakEndTime) {
+        if (startTime == null || endTime == null) {
+            throw new BadRequestException("Shift start time and end time are required");
+        }
+        if (!startTime.isBefore(endTime)) {
+            throw new BadRequestException("Shift start time must be before end time");
+        }
+
+        if (breakTime != null || breakEndTime != null) {
+            if (breakTime == null || breakEndTime == null) {
+                throw new BadRequestException("Both break start time and break end time must be provided if break is set");
+            }
+            if (!breakTime.isBefore(breakEndTime)) {
+                throw new BadRequestException("Break start time must be before break end time");
+            }
+
+            long breakMinutes = Duration.between(breakTime, breakEndTime).toMinutes();
+            if (breakMinutes > 120) {
+                throw new BadRequestException("Doctor break cannot exceed 2 hours (120 minutes)");
+            }
+
+            if (breakTime.isBefore(startTime) || breakEndTime.isAfter(endTime)) {
+                throw new BadRequestException(
+                    "Break time must be within doctor's shift hours (" + startTime + " – " + endTime + ")"
+                );
+            }
+
+            long shiftMinutes = Duration.between(startTime, endTime).toMinutes();
+            if (breakMinutes >= shiftMinutes) {
+                throw new BadRequestException("Break duration cannot cover or exceed the entire shift duration");
+            }
+        }
+    }
+
     @Transactional
     public void delete(Long id) {
-        findOrThrow(id);
-        Doctor doctor = doctorRepository.findById(id).orElseThrow();
-        Long userId = doctor.getUser().getId();
-        doctorRepository.deleteById(id);
-        userRepository.deleteById(userId);
+        Doctor doctor = findOrThrow(id);
+        User user = doctor.getUser();
+        Long userId = user.getId();
+
+        appointmentRepository.deleteByDoctorId(id);
+
+        appointmentRepository.deleteByPatientId(userId);
+
+        notificationRepository.deleteByUserId(userId);
+
+        doctorRepository.delete(doctor);
+        doctorRepository.flush();
+
+        user.getRoles().clear();
+        userRepository.delete(user);
+        userRepository.flush();
+
+        log.info("Doctor id {} and associated user id {} deleted successfully", id, userId);
     }
 
     private Doctor findOrThrow(Long id) {
